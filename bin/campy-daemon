@@ -1,0 +1,15 @@
+#! /usr/bin/env python
+
+import time
+import argparse
+from campy import Campy
+
+# At some point, I'm sure we'll want some command-line options for debugging
+parser = argparse.ArgumentParser(description='Monitoring daemon')
+parser.add_argument('--num-threads', dest='numThreads', default=10,
+    help='How many threads to use?')
+# Parse arguments, and then let's get going!
+args = parser.parse_args()
+
+bot = Campy()
+bot.start()

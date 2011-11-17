@@ -26,34 +26,30 @@ import urllib2, re
 from BeautifulSoup import BeautifulSoup
 from BeautifulSoup import BeautifulStoneSoup
 import sys, traceback, textwrap
-
-if __name__ == "__main__":
-    sys.path.append("../")
-    sys.path.append("./")
     
 from plugins import CampyPlugin
-from campy import settings
-
 
 class ZeroCater(CampyPlugin):
-    def __init__(self, *args):
-        pass
+    shortname = 'zc'
+    
+    def __init__(self, **kwargs):
+        self.url = kwargs['url']
+    
+    def reload(self, **kwargs):
+        self.url = kwargs['url']
     
     def handle_message(self, campfire, room, message, speaker):
         body = message['body']
         if not body:
             return
-
-        if not body.startswith(settings.CAMPFIRE_BOT_NAME):
-            return
         
-        m = re.match('%s: (?P<mode>zc|zcd)$' % settings.CAMPFIRE_BOT_NAME, body)
+        m = re.match('(?P<mode>zc|zcd)$', body)
         if m:
             try:
                 detail = True
                 if m.group('mode') == "zc":
                     detail = False
-                room.paste(pull_zc(settings.ZERO_CATER_URL,detail))
+                room.paste(pull_zc(self.url, detail))
             except Exception, e:
                 speak_text = u"%s: error parsing ZeroCater output." % speaker['user']['name']
                 room.speak(speak_text)
@@ -112,4 +108,6 @@ def pull_zc(pullurl,show_details=True):
     return ('\n'.join(paste_text))
     
 if __name__ == "__main__":
+    sys.path.append("../")
+    sys.path.append("./")
     print pull_zc("http://www.zerocater.com/seatme",show_details=True)

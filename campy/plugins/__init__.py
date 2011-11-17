@@ -19,9 +19,24 @@
 # LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
 # OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
 # WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
-#
+
+import re
 
 class CampyPlugin(object):
+    shortname = 'campy'
+    
+    def __init__(self, **kwargs):
+        # You will get all of your config file options as keyword arguments
+        # This happens once whenever campy is run from scratch.
+        pass
+    
+    def reload(self, **kwargs):
+        # This is for all subsequent reloads of the configuration file,
+        # and the actions it takes must be idempotent, because an arbitrary
+        # number of reloads can take place. The arguments provided are 
+        # similar to those of __init__
+        pass
+    
     def handle_message(self, campfire, room, message, speaker):
         raise NotImplementedError
 

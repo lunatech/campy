@@ -21,19 +21,23 @@
 # WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #
 
-import traceback
 import re
-
-from plugins import CampyPlugin
-from campy import settings
-
+import traceback
 from random import shuffle
-
+from plugins import CampyPlugin
 
 class BlackJack(CampyPlugin):
-    def __init__(self):
-        self.table = BlackJackTable(settings.BLACKJACK_DECKS)
+    shortname = 'bj'
+    
+    def __init__(self, **kwargs):
+        self.deck = kwargs['deck']
+        self.table = BlackJackTable(kwargs['deck'])
         self.table.shuffle()
+    
+    def reload(self, **kwargs):
+        if self.deck != kwargs['deck']:
+            self.table = BlackJackTable(kwargs['deck'])
+            self.table.shuffle()
 
     def send_help(self, campfire, room, message, speaker):
         help_text = """%s: Here is your help for the BlackJack plugin:
@@ -52,11 +56,8 @@ Example: bj join
         body = message['body']
         if not body:
             return
-
-        if not body.startswith(settings.CAMPFIRE_BOT_NAME):
-            return
-
-        m = re.match('%s: bj (?P<cmd>.*)$' % settings.CAMPFIRE_BOT_NAME, body)
+        
+        m = re.match('bj (?P<cmd>.*)$', body)
         if m:
             try:
                 cmd = m.group('cmd')

@@ -22,7 +22,7 @@
 #
 
 import re
-from campy import settings
+from campy import log
 from plugins import CampyPlugin
 
 try:
@@ -33,9 +33,17 @@ except ImportError:
     raise ImportError("Requries pytracker module. http://code.google.com/p/pytracker/")
 
 class PivotalTracker(CampyPlugin):
-    def __init__(self):
-        self.auth = HostedTrackerAuth(settings.PT_USERNAME, settings.PT_PASSWORD)
-
+    shortname = 'pt'
+    
+    def __init__(self, **kwargs):
+        if 'username' not in kwargs:
+            log.critical('No username provided for PivotalTracker')
+            exit(1)
+        if 'password' not in kwargs:
+            log.critical('No password provided for PivotalTracker')
+            exit(1)
+        self.auth = HostedTrackerAuth(kwargs['username'], kwargs['password'])
+        self.map  = kwargs['map']
 
     def send_help(self, campfire, room, message, speaker):
         help_text = """%s: Here is your help for the PivotalTracker plugin:
@@ -49,17 +57,13 @@ class PivotalTracker(CampyPlugin):
 
     def handle_message(self, campfire, room, message, speaker):
         project_name = room.data['name']
-        tracker = Tracker(settings.PT_ROOM_TO_PROJECT_MAP[project_name], self.auth)
+        tracker = Tracker(self.map, self.auth)
         body = message['body']
 
         if not body:
             return
-
-        if not body.startswith(settings.CAMPFIRE_BOT_NAME):
-            return
-
-        m = re.match('%s: pt story create "(?P<title>.*)" "(?P<description>.*)" (?P<type>.*)$' %
-                        settings.CAMPFIRE_BOT_NAME, body)
+        
+        m = re.match('pt story create "(?P<title>.*)" "(?P<description>.*)" (?P<type>.*)$', body)
         if m:
             story = Story()
             story.SetRequestedBy(speaker['user']['name'])
@@ -70,8 +74,7 @@ class PivotalTracker(CampyPlugin):
             self.speak_new_story(room, new_story, speaker)
             return
 
-        m = re.match("%s: pt getmine (?P<state>started|finished|delivered|accepted|rejected|unstarted|unscheduled)$" %
-                     settings.CAMPFIRE_BOT_NAME, body)
+        m = re.match("pt getmine (?P<state>started|finished|delivered|accepted|rejected|unstarted|unscheduled)$", body)
         if m:
             stories = tracker.GetStories('owner:"%s" state:%s' % (speaker['user']['name'], m.group('state')))
             if len(stories) > 0:
@@ -87,7 +90,7 @@ class PivotalTracker(CampyPlugin):
                 room.speak(speak_text)
             return
 
-        m = re.match("%s: pt start #?(?P<id>\d+)$" % settings.CAMPFIRE_BOT_NAME, body)
+        m = re.match("pt start #?(?P<id>\d+)$", body)
         if m:
             story = tracker.GetStory(int(m.group('id')))
             story.SetCurrentState('started')
@@ -97,8 +100,7 @@ class PivotalTracker(CampyPlugin):
                                                     story.GetStoryId()))
             return
 
-        m = re.match("%s: pt (?P<command>start|tell) next (?P<story_type>bug|feature|chore)(\s+)?(?P<mine>mine)?" %
-                     settings.CAMPFIRE_BOT_NAME, body)
+        m = re.match("pt (?P<command>start|tell) next (?P<story_type>bug|feature|chore)(\s+)?(?P<mine>mine)?", body)
         if m:
             filter = "type:%s state:unstarted" % m.group('story_type')
             if m.group('mine') == 'mine':

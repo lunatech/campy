@@ -28,30 +28,33 @@ import httplib2
 import urllib
 
 from plugins import CampyPlugin
-from campy import settings
 
 class GoogleImage(CampyPlugin):
+    shortname = 'gis'
+    base = 'https://ajax.googleapis.com/ajax/services/search/images?safe=%s&v=1.0&q=%s'
+    
+    def __init__(self, **kwargs):
+        self.safe = kwargs.get('safe', '0')
+    
+    def reload(self, **kwargs):
+        self.safe = kwargs.get('safe', '0')
+
     def send_help(self, campfire, room, message, speaker):
         help_text = """%s: Here is your help for the Google Image Search plugin:
         gis searchstring -- Search for an image. Will return the top result. (e.g. gis cuddly bunny)
         """ % speaker['user']['name']
         room.paste(help_text)
-
-
+    
     def handle_message(self, campfire, room, message, speaker):
         body = message['body']
         if not body:
             return
 
-        if not body.startswith(settings.CAMPFIRE_BOT_NAME):
-            return
-
-        m = re.match('%s: gis (?P<search_string>.*)$' % settings.CAMPFIRE_BOT_NAME, body)
+        m = re.match('gis (?P<search_string>.*)$', body)
         if m:
             try:
                 headers, content = httplib2.Http().request(
-                    "https://ajax.googleapis.com/ajax/services/search/images?safe=%s&v=1.0&q=%s" %
-                    (settings.GOOGLE_IMAGE_SAFE, urllib.quote(m.group('search_string'))))
+                    self.base % (self.safe, urllib.quote(m.group('search_string'))))
                 json = simplejson.loads(content)
                 self.speak_image_url(room, json['responseData']['results'][0]['unescapedUrl'])
             except (KeyError,):
