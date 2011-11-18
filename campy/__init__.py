@@ -153,6 +153,8 @@ class Campy(object):
         # Now go through the remaining sections
         for section, values in self.data.items():
             if section == 'campy':
+                if not values:
+                    values = {}
                 self.reload(**values)
                 continue
             if section == 'logger':
@@ -170,6 +172,8 @@ class Campy(object):
                     # it hasn't yet been encountered
                     plugin = self.plugins.get(m.shortname)
                     if plugin:
+                        if not values:
+                            values = {}
                         plugin.reload(**values)
                     else:
                         log.debug('Storing plugin at %s' % m.shortname)
