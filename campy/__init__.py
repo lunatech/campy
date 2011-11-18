@@ -59,8 +59,9 @@ class Campy(object):
         # This is a list of all our plugins, where each is an instance of the 
         # type campy.CampyPlugin, and the keys are the regular expressions they
         # are meant to match.
-        from campy.plugins import say, config, alias
+        from campy.plugins import sh, say, config, alias
         self.plugins = {
+            'sh'    : sh.ShPlugin(self),
             'say'   : say.SayPlugin(self),
             'config': config.ConfigPlugin(self),
             'alias' : alias.AliasPlugin(self)
@@ -163,7 +164,7 @@ class Campy(object):
         for fname in self.configs:
             try:
                 with file(fname) as f:
-                    self.data.update(yaml.safe_load(f))
+                    self.data.update(yaml.load(f))
             except Exception as e:
                 log.error('Could not read %s => %s' % (fname, repr(e)))
         self.data.update(overrides)
