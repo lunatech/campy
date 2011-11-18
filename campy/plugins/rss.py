@@ -6,7 +6,7 @@ import feedparser
 # It's important to use the same reactor as campy
 from campy import reactor
 
-from plugins import CampyPlugin
+from campy.plugins import CampyPlugin
 
 class RSSReader(CampyPlugin):
     shortname = 'rss'

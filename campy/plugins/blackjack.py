@@ -24,7 +24,7 @@
 import re
 import traceback
 from random import shuffle
-from plugins import CampyPlugin
+from campy.plugins import CampyPlugin
 
 class BlackJack(CampyPlugin):
     shortname = 'bj'

@@ -23,7 +23,7 @@
 
 import re
 from campy import log
-from plugins import CampyPlugin
+from campy.plugins import CampyPlugin
 
 try:
     from pytracker import Tracker

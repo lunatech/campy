@@ -37,15 +37,11 @@ TODO
 	directory, but instead, you could install your plugin somewhere, and then
 	campy could discover it as needed.
 * Built-in commands for dealing with the campy bot
-	* 'Reload' => re-scan for plugins
 	* 'Stats' => how're things going on campy?
 	* 'Join room X' => Also hop into such-and-such room
 	* 'Leave room X' => Get out of a particular room
 	* 'pip install' => Install a particular pip tool
 	* 'git install' => Checkout and install the package pointed to
-	* 'set <module> <variable> <value>' => Update a module's settings
-	* 'save <module> <variable> <value>' => Actually save those settings
-	* 'settings' => Print out our current settings
 	* 'say' => Say something out loud
 * Message regex registration mechanism
 	* The idea is that plugins would register for the kinds of messages they get,

@@ -27,7 +27,7 @@ from BeautifulSoup import BeautifulSoup
 from BeautifulSoup import BeautifulStoneSoup
 import sys, traceback, textwrap
     
-from plugins import CampyPlugin
+from campy.plugins import CampyPlugin
 
 class ZeroCater(CampyPlugin):
     shortname = 'zc'

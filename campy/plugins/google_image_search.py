@@ -27,7 +27,7 @@ import simplejson
 import httplib2
 import urllib
 
-from plugins import CampyPlugin
+from campy.plugins import CampyPlugin
 
 class GoogleImage(CampyPlugin):
     shortname = 'gis'

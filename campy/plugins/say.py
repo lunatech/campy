@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2011 Ben Belchak <ben@belchak.com>
+# Copyright (c) 2011 SEOmoz
 #
 # Permission is hereby granted, free of charge, to any person obtaining
 # a copy of this software and associated documentation files (the
@@ -21,27 +21,18 @@
 # WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 import re
+from campy.plugins import CampyPlugin
 
-class CampyPlugin(object):
-    shortname = 'campy'
-    
-    def __init__(self, **kwargs):
-        # You will get all of your config file options as keyword arguments
-        # This happens once whenever campy is run from scratch.
-        pass
-    
-    def reload(self, **kwargs):
-        # This is for all subsequent reloads of the configuration file,
-        # and the actions it takes must be idempotent, because an arbitrary
-        # number of reloads can take place. The arguments provided are 
-        # similar to those of __init__
-        pass
+class SayPlugin(CampyPlugin):
+    shortname = 'say'
+    sayRE = re.compile(r'say\s+?(.+)$', re.I)
     
     def handle_message(self, campfire, room, message, speaker):
-        room.speak('%s does not implement handle_message' % self.shortname)
+        match = self.sayRE.match(message['body'])
+        room.speak(match.group(1))
 
     def send_message(self, campfire, room, message, speaker):
         raise NotImplementedError
 
     def send_help(self, campfire, room, message, speaker):
-        room.speak('%s does not implement handle_message' % self.shortname)
+        room.paste('I just say whatever you want me to say!')
