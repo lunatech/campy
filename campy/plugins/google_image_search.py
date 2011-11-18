@@ -33,7 +33,8 @@ class GoogleImage(CampyPlugin):
     shortname = 'gis'
     base = 'https://ajax.googleapis.com/ajax/services/search/images?safe=%s&v=1.0&q=%s'
     
-    def __init__(self, **kwargs):
+    def __init__(self, campy, **kwargs):
+        self.campy = campy
         self.safe = kwargs.get('safe', '0')
     
     def reload(self, **kwargs):

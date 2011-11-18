@@ -32,7 +32,8 @@ from campy.plugins import CampyPlugin
 class ZeroCater(CampyPlugin):
     shortname = 'zc'
     
-    def __init__(self, **kwargs):
+    def __init__(self, campy, **kwargs):
+        self.campy = campy
         self.url = kwargs['url']
     
     def reload(self, **kwargs):

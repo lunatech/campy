@@ -11,7 +11,8 @@ from campy.plugins import CampyPlugin
 class RSSReader(CampyPlugin):
     shortname = 'rss'
     
-    def __init__(self, **kwargs):
+    def __init__(self, campy, **kwargs):
+        self.campy = campy
         self.reload(**kwargs)
         self._known_entries = set()
         self._known_rooms = {}

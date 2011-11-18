@@ -35,7 +35,8 @@ except ImportError:
 class PivotalTracker(CampyPlugin):
     shortname = 'pt'
     
-    def __init__(self, **kwargs):
+    def __init__(self, campy, **kwargs):
+        self.campy = campy
         if 'username' not in kwargs:
             log.critical('No username provided for PivotalTracker')
             exit(1)

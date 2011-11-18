@@ -31,17 +31,12 @@ of examples. I am sure there are improvements that can be made, but it's a start
 TODO
 ===================
 
-* Config file
 * Plugin discovery
 	* So that you don't have to necessarily add your plugin to the campy plugin
 	directory, but instead, you could install your plugin somewhere, and then
 	campy could discover it as needed.
 * Built-in commands for dealing with the campy bot
 	* 'Stats' => how're things going on campy?
-	* 'Join room X' => Also hop into such-and-such room
-	* 'Leave room X' => Get out of a particular room
-	* 'help' => List the current modules
-	* 'alias' => Create an alias for a command
 * Message regex registration mechanism
 	* The idea is that plugins would register for the kinds of messages they get,
 	so that campy can more easily determine if it knows how to handle a given type
@@ -50,4 +45,3 @@ TODO
 	* 'seen' plugin
 	* 'reminders' plugin
 * Further flesh out the plugins system.
-* Get the roster so we can pass it to the list of plugins

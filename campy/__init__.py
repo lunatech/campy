@@ -44,17 +44,14 @@ class Room(object):
 
 class Campy(object):
     def __init__(self, **kwargs):
+        # This is the directory we were launched in, before we move to the 
+        # Campy home directory
+        self.launchdir = os.getcwd()
         # In some cases, it might be useful to provide the subdomain and
         # an API key in the initializer (perhaps passed in as a command-
         # line argument?)
         self.subdomain = kwargs.get('subdomain', None)
         self.apiKey    = kwargs.get('api_key', None)
-        # This is a list of all the config files we should use. By default,
-        # we should check '/etc/campy.conf', '~/campy.conf' (of the running
-        # user), and any config file provided
-        self.configs = ['/etc/campy.conf', os.path.abspath('~/campy.conf'), os.path.abspath('./campy.conf')]
-        if kwargs.get('config', None):
-            self.configs.append(kwargs['config'])
         # When we get a message from Campfire, we're supplied with the room_id
         # as one of the parameters of the message. As such, we'll have a room
         # dictionary so we can quickly look up the appropriate room object
@@ -62,10 +59,11 @@ class Campy(object):
         # This is a list of all our plugins, where each is an instance of the 
         # type campy.CampyPlugin, and the keys are the regular expressions they
         # are meant to match.
-        from campy.plugins import say, config
+        from campy.plugins import say, config, alias
         self.plugins = {
-            'say'   : say.SayPlugin(),
-            'config': config.ConfigPlugin(self)
+            'say'   : say.SayPlugin(self),
+            'config': config.ConfigPlugin(self),
+            'alias' : alias.AliasPlugin(self)
         }
         # This is the name that the campy bot will respond to. It can be 
         # provided in the constructor, or it can be provided in the settings.
@@ -84,9 +82,24 @@ class Campy(object):
         
         self.goodbye     = 'Goodbye!'
         self.leaveOnExit = True
+        
+        # Try to set up our home directory
+        self.home   = kwargs.get('home', os.path.expanduser('~/.campy'))
+        if not os.path.exists(self.home):
+            try:
+                os.mkdir(self.home)
+            except Exception as e:
+                log.exception('Cannot make directory %s' % self.home)
+        
+        # Set the configuration files
+        self.configs = [
+            os.path.join(self.home, 'campy.conf'),
+            os.path.join(self.launchdir, 'campy.conf')
+        ]
         self.read()
 
     def findPlugin(self, n):
+        '''Try to locate the module with this particular name'''
         try:
             log.debug('Trying to import %s' % n)
             plugins = []
@@ -109,6 +122,13 @@ class Campy(object):
             log.exception('Could not find plugin %s' % n)
             return []
     
+    def reloadPlugin(self, n):
+        '''Try to reload a given module'''
+        try:
+            reload(n)
+        except Exception:
+            log.exception('Could not reload %s' % n)
+    
     def reload(self, **kwargs):
         '''Given a new set of configurations, make sure we're up to date'''
         if self.client:
@@ -121,16 +141,17 @@ class Campy(object):
                 log.critical('Need a subdomain and API key')
                 exit(1)
             self.client = Campfire(subdomain, apiKey)
+            
+            # Now register the bot's name
             self.name   = kwargs.get('name', self.name) or 'campy'
             self.nameRE = re.compile(r'\s*%s\s+(.+)\s*$' % re.escape(self.name), re.I)
+            
+            # Now join all the appropriate rooms
             for room in kwargs.get('rooms', []):
-                room = self.client.find_room_by_name(room)
-                if room:
-                    log.debug("Joining %s" % room)
-                    self.rooms[room.id] = room
-                    room.join()
+                if not self.joinRoom(room):
+                    log.warn('Could not find room %s' % room)
                 else:
-                    log.warn('Room %s not found' % room)
+                    log.debug('Joined %s' % room)
     
     def read(self, overrides={}):
         '''Re-read the settings, and do all the appropriate imports'''
@@ -177,13 +198,28 @@ class Campy(object):
                         plugin.reload(**values)
                     else:
                         log.debug('Storing plugin at %s' % m.shortname)
-                        self.plugins[m.shortname] = m(**values)
+                        self.plugins[m.shortname] = m(self, **values)
             except ImportError:
                 log.exception('Unable to import module %s' % section)
         log.debug('Read configuration files...')
     
     def save(self, filename=None):
-        pass
+        # Try to save the current configuration to a file.
+        try:
+            # To be safe when writing, the best thing to do is to first
+            # save a temporary copy, and then if successful, replace the
+            # original with the temporary
+            path = filename or os.path.join(self.home, 'campy.conf')
+            with file(path + '.bak', 'w+') as f:
+                f.write(yaml.dump(self.data))
+            
+            # And now move the new file to replace the old file
+            os.rename(path + '.bak', path)
+            log.debug('Wrote to %s' % path)
+            return 'Wrote configuration to %s' % path
+        except Exception as e:
+            log.exception('Campy save exception')
+            return 'Campy save exception => %s' % repr(e)
     
     def callback(self, obj):
         '''Go through all the plugins and give it the appropriate message'''
@@ -213,33 +249,57 @@ class Campy(object):
             return
         
         user = self.client.user(obj['user_id'])
+        self.handle_message(self.client, room, obj, user)
+    
+    def handle_message(self, campfire, room, message, speaker):
+        # Handle the join room command
+        match = re.match(r'\s*join\s+(.+)\s*$', message['body'])
+        if match:
+            room.speak(self.joinRoom(match.group(1).strip()))
+            return
+        
+        # Handle the leave room command
+        match = re.match(r'\s*leave\s+(.+)\s*$', message['body'])
+        if match:
+            room.speak(self.leaveRoom(match.group(1).strip()))
+            return
+        
+        # See if it's a built-in command
+        if re.match(r'\s*help\s*', message['body']):
+            self.handle_help(campfire, room, message, speaker)
+        
         # Handle all help requests...
-        match = re.match(r'\s*help\s*(.+?)\s*$', message)
+        match = re.match(r'\s*help\s*(.+?)\s*$', message['body'])
         if match:
             name = match.group(1)
             plugin = self.plugins.get(name, None)
             if plugin:
-                plugin.send_help(self.client, room, obj, user)
+                plugin.send_help(self.client, room, message, speaker)
                 return
             # Alright, if we've made it here, nothing had help for this command
             room.speak('No help available for %s' % match.group(1))
         
         # Otherwise, try to find the plugin that they were trying to talk to
-        match = re.match(r'\s*(\S+)(\s*.*$|$)', message)
+        match = re.match(r'\s*(\S+)(\s*.*$|$)', message['body'])
         if match:
             name = match.group(1)
             plugin = self.plugins.get(name, None)
             if plugin:
                 try:
-                    plugin.handle_message(self.client, room, obj, user)
+                    plugin.handle_message(self.client, room, message, speaker)
                     return
                 except Exception as e:
                     room.paste('Expection in %s => %s' % (name, repr(e)))
                     log.exception('Exception in %s' % name)
             else:
-                room.speak('No plugin responds to %s' % message)
+                room.speak('No plugin responds to %s' % message['body'])
         else:
             log.warn('No match.')
+    
+    def handle_help(self, campfire, room, message, speaker):
+        room.paste('''Give this campfire bot commands by saying "campy <command>".
+To find out more about a command, type "campy help <command>". The currently-loaded
+plugins are: %s''' % ', '.join(self.plugins.keys()))
     
     def errback(self, failure):
         try:
@@ -247,9 +307,38 @@ class Campy(object):
         except:
             log.exception('Errback')
     
+    def joinRoom(self, name):
+        room = self.client.find_room_by_name(name)
+        if room:
+            if room.id in self.rooms:
+                log.debug('Already in room %s' % name)
+                return 'Already in room %s' % name
+            else:
+                self.rooms[room.id] = room
+                room.join()
+                room.listen(self.callback, self.errback, start_reactor=False)
+                log.debug('Joined room %s' % name)
+                return 'Joined room %s' % name
+        else:
+            log.debug('Could not find room %s' % name)
+            return 'Couldn\'t find room %s' % name
+    
+    def leaveRoom(self, name):
+        room = self.client.find_room_by_name(name)
+        if room:
+            if len(self.rooms) > 1:
+                if room.id in self.rooms:
+                    del self.rooms[room.id]
+                    return 'Left room %s' % name
+                else:
+                    return 'I\'m not in room %s' % name
+            else:
+                return '%s is the last room I\'m in, and I\'m not leaving!' % name
+        else:
+            return 'Couldn\'t find room %s' % name
+    
     def start(self):
         log.info('Starting campy...')
-        self.listen()
         reactor.run()
     
     def stop(self):
@@ -257,8 +346,3 @@ class Campy(object):
             room.speak(self.goodbye)
             if self.leaveOnExit:
                 room.leave()
-
-    def listen(self):
-        log.info('Listening...')
-        for room in self.rooms.values():
-            room.listen(self.callback, self.errback, start_reactor=False)

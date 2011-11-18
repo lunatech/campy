@@ -31,7 +31,8 @@ class GitPlugin(CampyPlugin):
     cloneRE    = re.compile(r'git\s+clone\s+(\S+?)\s*$', re.I)
     updateRE   = re.compile(r'git\s+update\s+(\S+?)\s*$', re.I)
 
-    def __init__(self, **kwargs):
+    def __init__(self, campy, **kwargs):
+        self.campy = campy
         # The path where we store everything
         self.path = kwargs.get('path', os.path.abspath(os.path.expanduser('~/')))
     
@@ -40,34 +41,24 @@ class GitPlugin(CampyPlugin):
         match = self.cloneRE.match(body)
         if match:
             repo = match.group(1)
-            cwd  = os.getcwd()
             results = ''
             try:
-                # Save the original path
-                os.chdir(self.path)
                 results = subprocess.check_output(['git', 'clone', repo], stderr=subprocess.STDOUT)
                 room.paste(results)
             except Exception as e:
                 room.paste('Git Error => %s' % results)
                 log.exception('Failed to git action')
-            finally:
-                os.chdir(cwd)
             return
         
         match = self.updateRE.match(body)
         if match:
             repo = match.group(1)
-            cwd  = os.getcwd()
             try:
-                # Save the original path
-                os.chdir(os.path.join(self.path, repo))
                 results = subprocess.check_output(['git', 'pull'], stderr=subprocess.STDOUT)
                 room.paste(results)
             except Exception as e:
                 room.paste('Git => %s' % repr(e))
                 log.exception('Failed to git action')
-            finally:
-                os.chdir(cwd)
             return
 
     def send_message(self, campfire, room, message, speaker):

@@ -25,10 +25,10 @@ import re
 class CampyPlugin(object):
     shortname = 'campy'
     
-    def __init__(self, **kwargs):
+    def __init__(self, campy, **kwargs):
         # You will get all of your config file options as keyword arguments
         # This happens once whenever campy is run from scratch.
-        pass
+        self.campy = campy
     
     def reload(self, **kwargs):
         # This is for all subsequent reloads of the configuration file,
