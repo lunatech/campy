@@ -40,9 +40,8 @@ TODO
 	* 'Stats' => how're things going on campy?
 	* 'Join room X' => Also hop into such-and-such room
 	* 'Leave room X' => Get out of a particular room
-	* 'pip install' => Install a particular pip tool
-	* 'git install' => Checkout and install the package pointed to
-	* 'say' => Say something out loud
+	* 'help' => List the current modules
+	* 'alias' => Create an alias for a command
 * Message regex registration mechanism
 	* The idea is that plugins would register for the kinds of messages they get,
 	so that campy can more easily determine if it knows how to handle a given type
