@@ -47,8 +47,8 @@ class AliasPlugin(CampyPlugin):
         
         match = self.setRE.match(body)
         if match:
-            key = match.group(1).strip()
-            value = match.group(2).strip()
+            key = match.group(1).strip().encode('utf-8')
+            value = match.group(2).strip().encode('utf-8')
             self.aliases[key] = value
             # Now save it to campy's configuration
             self.campy.data.setdefault('alias', {})

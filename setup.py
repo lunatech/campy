@@ -1,6 +1,6 @@
 #! /usr/bin/env python
 
-dependencies = ['twisted', 'simplejson', 'BeautifulSoup', 'httplib2', 'pyopenssl', 'feedparser', 'pinder', 'pyyaml']
+dependencies = ['twisted', 'simplejson', 'BeautifulSoup', 'httplib2', 'pyopenssl', 'feedparser', 'pinder', 'pyyaml', 'argparse']
 
 try:
     from setuptools import setup

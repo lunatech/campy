@@ -123,6 +123,14 @@ class Campy(object):
             log.exception('Could not find plugin %s' % n)
             return []
     
+    def updatePath(self):
+        for path in os.listdir(self.home):
+            if not path.startswith('.'):
+                p = os.path.join(self.home, path)
+                if p not in sys.path:
+                    log.debug('Appending %s to path' % p)
+                    sys.path.append(p)
+    
     def reloadPlugin(self, n):
         '''Try to reload a given module'''
         try:
@@ -130,29 +138,37 @@ class Campy(object):
         except Exception:
             log.exception('Could not reload %s' % n)
     
+    def update(self, update, destination=None):
+        if not destination:
+            destination = self.data
+        for key, value in update.items():
+            if key in destination and isinstance(destination[key], dict):
+                self.update(value, destination[key])
+            else:
+                destination[key] = value
+        return destination
+
     def reload(self, **kwargs):
         '''Given a new set of configurations, make sure we're up to date'''
-        if self.client:
-            pass
-        else:
-            log.info(repr(kwargs))
-            subdomain = kwargs.get('subdomain', self.subdomain)
-            apiKey    = kwargs.get('api_key', self.apiKey)
-            if not subdomain and not apiKey:
-                log.critical('Need a subdomain and API key')
-                exit(1)
-            self.client = Campfire(subdomain, apiKey)
-            
-            # Now register the bot's name
-            self.name   = kwargs.get('name', self.name) or 'campy'
-            self.nameRE = re.compile(r'\s*%s\s+(.+)\s*$' % re.escape(self.name), re.I)
-            
-            # Now join all the appropriate rooms
-            for room in kwargs.get('rooms', []):
-                if not self.joinRoom(room):
-                    log.warn('Could not find room %s' % room)
-                else:
-                    log.debug('Joined %s' % room)
+        self.updatePath()
+        log.info(repr(kwargs))
+        subdomain = kwargs.get('subdomain', self.subdomain)
+        apiKey    = kwargs.get('api_key', self.apiKey)
+        if not subdomain and not apiKey:
+            log.critical('Need a subdomain and API key')
+            exit(1)
+        self.client = Campfire(subdomain, apiKey)
+        
+        # Now register the bot's name
+        self.name   = kwargs.get('name', self.name) or 'campy'
+        self.nameRE = re.compile(r'\s*%s\s+(.+)\s*$' % re.escape(self.name), re.I)
+        
+        # Now join all the appropriate rooms
+        for room in kwargs.get('rooms', []):
+            if not self.joinRoom(room):
+                log.warn('Could not find room %s' % room)
+            else:
+                log.debug('Joined %s' % room)
     
     def read(self, overrides={}):
         '''Re-read the settings, and do all the appropriate imports'''
@@ -167,7 +183,7 @@ class Campy(object):
                     self.data.update(yaml.load(f))
             except Exception as e:
                 log.error('Could not read %s => %s' % (fname, repr(e)))
-        self.data.update(overrides)
+        self.update(overrides)
         # There has to at least be a campy section
         if 'campy' not in self.data:
             log.critical('No campy configuration found in config files!')
@@ -199,6 +215,7 @@ class Campy(object):
                         plugin.reload(**values)
                     else:
                         log.debug('Storing plugin at %s' % m.shortname)
+                        values = values or {}
                         self.plugins[m.shortname] = m(self, **values)
             except ImportError:
                 log.exception('Unable to import module %s' % section)
@@ -264,10 +281,18 @@ class Campy(object):
         if match:
             room.speak(self.leaveRoom(match.group(1).strip()))
             return
+
+        # Handle the reload command
+        match = re.match(r'\s*reload\s*$', message['body'])
+        if match:
+            room.speak('Reloading...')
+            self.reload()
+            return
         
         # See if it's a built-in command
-        if re.match(r'\s*help\s*', message['body']):
+        if re.match(r'\s*help\s*$', message['body']):
             self.handle_help(campfire, room, message, speaker)
+            return
         
         # Handle all help requests...
         match = re.match(r'\s*help\s*(.+?)\s*$', message['body'])
@@ -279,6 +304,7 @@ class Campy(object):
                 return
             # Alright, if we've made it here, nothing had help for this command
             room.speak('No help available for %s' % match.group(1))
+            return
         
         # Otherwise, try to find the plugin that they were trying to talk to
         match = re.match(r'\s*(\S+)(\s*.*$|$)', message['body'])
@@ -290,7 +316,7 @@ class Campy(object):
                     plugin.handle_message(self.client, room, message, speaker)
                     return
                 except Exception as e:
-                    room.paste('Expection in %s => %s' % (name, repr(e)))
+                    room.paste('Exception in %s => %s' % (name, repr(e)))
                     log.exception('Exception in %s' % name)
             else:
                 room.speak('No plugin responds to %s' % message['body'])

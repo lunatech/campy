@@ -47,7 +47,8 @@ class ConfigPlugin(CampyPlugin):
             return
         
         if self.saveRE.match(body):
-            room.speak('Not implemented yet...')
+            room.speak('Saving configuration')
+            self.campy.save()
             return
         
         match = self.setRE.match(body)

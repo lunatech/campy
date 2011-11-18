@@ -22,14 +22,14 @@
 
 import re
 import os
+import shlex
 import subprocess
 from campy import log
 from campy.plugins import CampyPlugin
 
 class GitPlugin(CampyPlugin):
     shortname  = 'git'
-    cloneRE    = re.compile(r'git\s+clone\s+(\S+?)\s*$', re.I)
-    updateRE   = re.compile(r'git\s+update\s+(\S+?)\s*$', re.I)
+    commandRE  = re.compile(r'git\s+(.+)\s*$', re.I)
 
     def __init__(self, campy, **kwargs):
         self.campy = campy
@@ -38,34 +38,29 @@ class GitPlugin(CampyPlugin):
     
     def handle_message(self, campfire, room, message, speaker):
         body = message['body']
-        match = self.cloneRE.match(body)
+        match = self.commandRE.match(body)
         if match:
-            repo = match.group(1)
-            results = ''
+            cwd = os.getcwd()
+            os.chdir(self.campy.home)
+            command = ['git']
+            command.extend(shlex.split(match.group(1).strip().encode('utf-8')))
+            room.paste('Running %s' % ' '.join(command))
             try:
-                results = subprocess.check_output(['git', 'clone', repo], stderr=subprocess.STDOUT)
-                room.paste(results)
-            except Exception as e:
-                room.paste('Git Error => %s' % results)
-                log.exception('Failed to git action')
+                room.paste(match.group(1) + ' => ' + subprocess.check_output(command))
+                self.campy.updatePath()
+            except subprocess.CalledProcessError as e:
+                room.paste(match.group(1) + ' => ERROR %s' % e.output)
+            finally:
+                os.chdir(cwd)
             return
-        
-        match = self.updateRE.match(body)
-        if match:
-            repo = match.group(1)
-            try:
-                results = subprocess.check_output(['git', 'pull'], stderr=subprocess.STDOUT)
-                room.paste(results)
-            except Exception as e:
-                room.paste('Git => %s' % repr(e))
-                log.exception('Failed to git action')
-            return
-
+        else:
+            self.send_help(campfire, room, message, speaker)
+    
     def send_message(self, campfire, room, message, speaker):
         raise NotImplementedError
 
     def send_help(self, campfire, room, message, speaker):
-        room.paste('''This plugin lets you checkout git repos to campy's path:
+        room.paste('''This plugin lets you checkout git repos to __campy__'s path:
 # clone a repository
 campy git clone git@github.com:someuser/someproject
 # Pull updates into a repo

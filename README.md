@@ -149,6 +149,8 @@ TODO
 * Develop some other plugins
 	* 'seen' plugin
 	* 'reminders' plugin
+* Deep merge of configurations
+* Delete aliases
 * Further flesh out the plugins system.
 	* Basically, I want to have git checkouts stored in ``~/.campy``, and then it
 	can add those directories to the path.

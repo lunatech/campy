@@ -22,27 +22,35 @@
 
 import re
 import os
+import shlex
 import subprocess
 from campy import log
 from campy.plugins import CampyPlugin
 
 class PipPlugin(CampyPlugin):
     shortname  = 'pip'
-    installRE  = re.compile(r'pip\s+install\s+(\S+?)\s*$', re.I)
+    commandRE  = re.compile(r'pip\s+(.+)\s*$', re.I)
     
     def handle_message(self, campfire, room, message, speaker):
         body = message['body']
-        match = self.installRE.match(body)
+        match = self.commandRE.match(body)
         if match:
-            repo = match.group(1)
+            cwd = os.getcwd()
+            os.chdir(self.campy.home)
+            command = ['pip']
+            command.extend(shlex.split(match.group(1).strip().encode('utf-8')))
+            room.paste('Running %s' % ' '.join(command))
             try:
-                results = subprocess.check_output(['pip', 'install', repo], stderr=subprocess.STDOUT)
-            except Exception as e:
-                log.exception('Failed to git action')
+                room.paste(match.group(1) + ' => ' + subprocess.check_output(command))
+                self.campy.updatePath()
+            except subprocess.CalledProcessError as e:
+                room.paste(match.group(1) + ' => ERROR %s' % e.output)
             finally:
-				room.paste('Pip: %s' % results)
+                os.chdir(cwd)
             return
-
+        else:
+            self.send_help(campfire, room, message, speaker)
+    
     def send_message(self, campfire, room, message, speaker):
         raise NotImplementedError
 
