@@ -28,7 +28,8 @@ class AliasPlugin(CampyPlugin):
     shortname  = 'alias'
     listRE     = re.compile(r'alias\s+list\s*$', re.I)
     execRE     = re.compile(r'alias\s+(.+)\s*$', re.I)
-    setRE      = re.compile(r'alias\s+set\s+([^\=]+)\s*\=\s*(.+)\s*$', re.I)
+    setRE      = re.compile(r'alias\s+([^\=]+)\s*\=\s*(.+)\s*$', re.I)
+    rmRE       = re.compile(r'alias\s+rm\s+([^\=]+)\s*$')
     
     def __init__(self, campy, **kwargs):
         self.campy   = campy
@@ -54,7 +55,19 @@ class AliasPlugin(CampyPlugin):
             self.campy.data.setdefault('alias', {})
             self.campy.data['alias'][key] = value
             self.campy.save()
-            room.speak('Alias %s saved' % key)
+            room.speak('Alias "%s" saved' % key)
+            return
+        
+        match = self.rmRE.match(body)
+        if match:
+            command = self.aliases.get(match.group(1).strip(), None)
+            if command:
+                room.speak('Deleting alias "%s"' % match.group(1))
+                del self.aliases[match.group(1)]
+                del self.campy.data['alias'][match.group(1)]
+                self.campy.save()
+            else:
+                room.speak('"%s" is not a known alias' % match.group(1))
             return
         
         match =  self.execRE.match(body)
@@ -77,4 +90,6 @@ class AliasPlugin(CampyPlugin):
 campy alias hello = say howdy, everyone!
 # Now execute the alias accoringly
 campy alias hello
+# I'm tired of this alias
+campy alias rm hello
 ''')
